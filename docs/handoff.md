@@ -1,6 +1,6 @@
 # Handoff
 
-Repo/폴더: ~/gambling-prevention (로컬 Git만, 원격 Repo 아직 없음)
+Repo/폴더: ~/개인PRD (로컬 Git만, 원격 Repo 아직 없음)
 branch/commit: main = 첫 baseline commit / 작업 branch feat/JJWDKU-small-change
 실행: npm install → npm run dev -- --port 3099 --strictPort (포트는 본인 포트로)
 P8 선택: 미정 (삭제 확인 AC-03은 이미 구현됨 → B 안내 문구 또는 새 작은 변경 선택)
