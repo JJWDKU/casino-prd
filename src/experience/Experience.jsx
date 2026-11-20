@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  ANSWERS, BEFORE_AFTER_QUESTION, FEED, GAMES, ERROR_MS, INVITE_AFTER_ROUND, MAX_ROUNDS, PAYOUT, QUIZ,
+  ANSWERS, BEFORE_AFTER_QUESTION, HIGH_BETS, FEED, GAMES, ERROR_MS, INVITE_AFTER_ROUND, MAX_ROUNDS, PAYOUT, QUIZ,
   PROCESS_MS, START_MONEY, TRICKS, WITHDRAW_RULE, betsOf, gameById, phaseOf, winOf,
 } from './scenario.js'
 import { DiceGame, HorseGame, RouletteGame, SlotGame } from './Games.jsx'
 
-// 체험 기록은 저장하지 않는다. 새로고침하면 처음부터 다시 시작한다.
+// 체험 진행은 세션 저장소에만 둔다: 새로고침하면 이어지고, 탭을 닫으면 사라진다. 서버로 보내지 않는다.
+const SESSION_KEY = 'silche.exp.v9'
 const OLD_KEYS = ['silche.experience', 'silche.experience.v6', 'silche.experience.v7', 'silche.experience.v8']
 const won = (n) => `${Number(n).toLocaleString('ko-KR')}원`
 const signedWon = (n) => `${n > 0 ? '+' : n < 0 ? '-' : ''}${Number(Math.abs(n)).toLocaleString('ko-KR')}원`
@@ -120,11 +121,14 @@ function StartScreen({ begin, goHelp }) {
 
 /* ---------- 재현 화면 공통 ---------- */
 
-function ReplicaLabel({ goHome }) {
+function ReplicaLabel({ s }) {
+  const r = s?.round ?? 0
+  const text = !s || s.stage === 'signup' ? '가입 단계'
+    : r < MAX_ROUNDS ? `진행 ${r} / ${MAX_ROUNDS}판` : `${r}판 진행 · 출금 가능`
   return (
     <div className="replica-label" role="note">
       <span className="replica-tag"><i aria-hidden="true" />교육용 체험 · 실제 돈 아님</span>
-      <button type="button" className="replica-home" onClick={goHome}>그만하기</button>
+      <span className="replica-progress">{text}</span>
     </div>
   )
 }
@@ -229,9 +233,14 @@ function Stats({ s, frozen }) {
         <span>{signedWon(diff)}</span>
         <small>시작 {won(START_MONEY)} 기준</small>
       </div>
-      <div className="rp-meta">
+      <div className="rp-progress" aria-label={`${s.round}판 진행, 출금까지 ${left}판 남음`}>
+        <ol>
+          {Array.from({ length: MAX_ROUNDS }, (_, i) => (
+            <li key={i} className={i < s.round ? 'is-done' : i === s.round ? 'is-now' : ''}>{i + 1}</li>
+          ))}
+          {s.round > MAX_ROUNDS && <li className="is-extra">+{s.round - MAX_ROUNDS}</li>}
+        </ol>
         <span>{left > 0 ? `출금까지 ${left}판 더` : '출금 가능'}</span>
-        <span>{s.round}판 진행</span>
       </div>
     </div>
   )
@@ -265,6 +274,10 @@ function WithdrawPopup({ s, onClose }) {
 function useWithdraw(s, update) {
   const [open, setOpen] = useState(false)
   const start = () => {
+    if (s.money <= 0) {
+      update({ stage: 'broke' })
+      return
+    }
     if (s.round >= MAX_ROUNDS) {
       update({ stage: 'scam', scamAt: s.money })
       return
@@ -276,7 +289,7 @@ function useWithdraw(s, update) {
 }
 
 function WithdrawButton({ s, onClick }) {
-  const ready = s.round >= MAX_ROUNDS
+  const ready = s.round >= MAX_ROUNDS && s.money > 0
   return (
     <button type="button" className={`rp-btn rp-out ${ready ? 'is-ready' : ''}`} onClick={onClick}>
       {ready ? `${won(s.money)} 출금하기` : '출금하기'}
@@ -288,17 +301,34 @@ function VipBanner() {
   return (
     <div className="rp-pop rp-event" role="status">
       <p className="rp-headline">VIP 테이블 오픈!</p>
-      <p>이제부터 판돈이 커져요. 최소 베팅 <b>50,000원</b> · 크게 걸고 크게 따세요!</p>
+      <p>이제부터 판돈이 커져요. 최소 베팅 <b>{won(HIGH_BETS[0])}</b> · 크게 걸고 크게 따세요!</p>
     </div>
   )
 }
 
-function EndBox({ update }) {
+function EndBox({ onWithdraw }) {
   return (
     <div className="rp-pop rp-reject">
       <p className="rp-big-red">보유 금액 0원</p>
-      <p>{won(START_MONEY)}으로 시작해서 모두 잃었어요. 한 푼도 출금하지 못했어요.</p>
-      <button type="button" className="rp-btn rp-primary" onClick={() => update({ stage: 'quiz' })}>체험 끝내고 수법 찾기</button>
+      <p>{won(START_MONEY)}으로 시작해서 모두 잃었어요. 그동안 딴 돈은 어디 있을까요?</p>
+      <p className="rp-headline">아래 [출금하기]를 눌러 보세요.</p>
+      <button type="button" className="rp-btn rp-out" onClick={onWithdraw}>출금하기</button>
+    </div>
+  )
+}
+
+// 5판이 지나면 판이 끝날 때마다 "지금 출금할 수 있어요" 알림을 띄운다
+function WithdrawToast({ s, onWithdraw }) {
+  const [open, setOpen] = useState(true)
+  if (!open) return null
+  return (
+    <div className="rp-toast" role="alert">
+      <p className="rp-toast-head">알림 · {s.round}판 끝</p>
+      <p>지금 바로 출금할 수 있어요! 보유 <b>{won(s.money)}</b></p>
+      <div className="rp-toast-row">
+        <button type="button" className="rp-btn rp-out is-ready" onClick={onWithdraw}>{won(s.money)} 출금하기</button>
+        <button type="button" className="rp-btn" onClick={() => setOpen(false)}>닫기</button>
+      </div>
     </div>
   )
 }
@@ -313,7 +343,7 @@ function LobbyScreen({ s, update }) {
       <Stats s={s} />
       {showInvite && <InvitePopup update={update} />}
       {s.round >= MAX_ROUNDS && !out && <VipBanner />}
-      {out ? <EndBox update={update} /> : (
+      {out ? <EndBox onWithdraw={openWithdraw} /> : (
         <div className="rp-games">
           {GAMES.map((g) => (
             <button key={g.id} type="button" className={`rp-game is-${g.id}`} onClick={() => update({ stage: 'game', game: g.id })}>
@@ -349,20 +379,45 @@ function ResultBanner({ result, round }) {
   )
 }
 
+// 카지노 칩: 금액마다 색이 다르고, 테두리 무늬·안쪽 고리·금액 표시
+const CHIP_COLOR = { 10000: '#1e5bd8', 30000: '#1f9d55', 50000: '#d32f2f', 100000: '#1b1b1b', 200000: '#c99a1c', 300000: '#e65100' }
+const short = (b) => (b >= 10000 ? `${b / 10000}만` : `${b}`)
+
+function Chip({ amount, label }) {
+  const c = CHIP_COLOR[amount] ?? '#5d4037'
+  return (
+    <svg viewBox="0 0 64 64" className="rp-chip-svg" aria-hidden="true">
+      <circle cx="32" cy="32" r="30" fill={c} />
+      {Array.from({ length: 8 }, (_, k) => (
+        <rect key={k} x="28" y="2.5" width="8" height="9" rx="1.5" fill="#fff" transform={`rotate(${k * 45} 32 32)`} />
+      ))}
+      <circle cx="32" cy="32" r="21" fill={c} stroke="#fff" strokeWidth="1.6" strokeDasharray="3 2.4" />
+      <circle cx="32" cy="32" r="16.5" fill="rgba(255,255,255,.12)" />
+      <text x="32" y="37" className="rp-chip-text">{label ?? short(amount)}</text>
+    </svg>
+  )
+}
+
 function BetPicker({ s, bet, setBet }) {
   const options = betsOf(s.round + 1).filter((b) => b <= s.money)
   const allIn = options.length === 0
   return (
-    <div className="rp-bet" role="radiogroup" aria-label="베팅 금액">
-      <span>베팅</span>
-      {allIn ? (
-        <button type="button" role="radio" aria-checked className="rp-chip v3 is-on">전액<br />{won(s.money)}</button>
-      ) : options.map((b, i) => (
-        <button key={b} type="button" role="radio" aria-checked={bet === b} className={`rp-chip v${i + 1} ${bet === b ? 'is-on' : ''}`} onClick={() => setBet(b)}>
-          {b >= 10000 ? `${b / 10000}만` : b}
-        </button>
-      ))}
-      {!allIn && <span className="rp-bet-now">{won(bet)} 베팅 · 이기면 {won(bet * PAYOUT)}</span>}
+    <div className="rp-bet">
+      <p className="rp-bet-title">베팅 금액을 고르세요</p>
+      <div className="rp-chips" role="radiogroup" aria-label="베팅 금액">
+        {allIn ? (
+          <button type="button" role="radio" aria-checked className="rp-chip is-on" aria-label={`전액 ${won(s.money)}`}>
+            <Chip amount={0} label="ALL" />
+            <span className="rp-chip-won">{won(s.money)}</span>
+          </button>
+        ) : options.map((b) => (
+          <button key={b} type="button" role="radio" aria-checked={bet === b} className={`rp-chip ${bet === b ? 'is-on' : ''}`} onClick={() => setBet(b)} aria-label={won(b)}>
+            <Chip amount={b} />
+            <span className="rp-chip-won">{won(b)}</span>
+          </button>
+        ))}
+      </div>
+      <p className="rp-bet-now">{allIn ? `남은 ${won(s.money)} 전부 베팅` : `${won(bet)} 베팅 · 이기면 ${won(bet * PAYOUT)} 받음`}</p>
     </div>
   )
 }
@@ -450,7 +505,7 @@ function GameScreen({ s, update }) {
       {result && !result.timeout && !result.win && s.money > 0 && (
         <p className="rp-nudge">{s.round >= MAX_ROUNDS ? '크게 걸면 한 번에 되찾을 수 있어요!' : '아깝네요! 다음 판에 바로 되찾을 수 있어요.'}</p>
       )}
-      {result && s.round === MAX_ROUNDS && s.money > 0 && <p className="rp-nudge">5판 달성! 이제 출금할 수 있어요.</p>}
+      {result && !result.timeout && s.round >= MAX_ROUNDS && s.money > 0 && <WithdrawToast key={s.round} s={s} onWithdraw={openWithdraw} />}
 
       {result && canPlay && (
         <div className="rp-pair">
@@ -459,10 +514,37 @@ function GameScreen({ s, update }) {
         </div>
       )}
       {ready && <button type="button" className="rp-link" onClick={() => update({ stage: 'lobby', game: null })}>다른 게임 고르기</button>}
-      {s.money <= 0 && <EndBox update={update} />}
+      {s.money <= 0 && <EndBox onWithdraw={openWithdraw} />}
       <Feed />
       {s.money > 0 && <WithdrawButton s={s} onClick={openWithdraw} />}
       {withdrawing && <WithdrawPopup s={s} onClose={closeWithdraw} />}
+    </div>
+  )
+}
+
+/* ---------- 다 잃은 뒤 출금: 출금할 돈이 없다 ---------- */
+
+function BrokeScreen({ s, update }) {
+  const peak = Math.max(START_MONEY, ...s.history.map((h) => h.money))
+  return (
+    <div className="page scam">
+      <div className="replica">
+        <ReplicaLabel s={s} />
+        <div className="rp-body">
+          <SiteBar s={s} />
+          <div className="rp-pop rp-reject" role="alert">
+            <p className="rp-big-red">출금 불가</p>
+            <p className="rp-rule">출금 가능한 금액이 없습니다. (잔액 0원)</p>
+            <p className="rp-small">한때 {won(peak)}까지 있었던 돈은 모두 사이트 안에서 사라졌어요.</p>
+          </div>
+        </div>
+      </div>
+      <div className="reality" role="status">
+        <p>이게 불법도박의 현실입니다.</p>
+        <p>딴 돈도, 처음 가진 돈도 모두 사라졌습니다.</p>
+        <p className="reality-last">이제는 몸소 느끼셨죠?</p>
+        <button type="button" className="btn btn-primary btn-wide" onClick={() => update({ stage: 'quiz', brokeTried: true })}>다음 단계: 수법 찾기</button>
+      </div>
     </div>
   )
 }
@@ -507,7 +589,7 @@ function ScamScreen({ s, update, goHome }) {
   return (
     <div className="page scam">
       <div className={`replica ${phase === 'error' ? 'is-lagging' : ''} ${phase === 'gone' ? 'is-gone' : ''}`}>
-        <ReplicaLabel goHome={goHome} />
+        <ReplicaLabel s={s} />
         {phase !== 'gone' ? (
           <div className="rp-body" aria-busy={phase === 'error'}>
             <SiteBar s={s} />
@@ -699,6 +781,17 @@ function RoundReview({ history }) {
 }
 
 function WithdrawReview({ s }) {
+  if (!s.scamDone && s.brokeTried) {
+    const peak = Math.max(START_MONEY, ...s.history.map((h) => h.money))
+    return (
+      <div className="card">
+        <h3 className="card-title">출금하려던 순간</h3>
+        <p><span className="round-label">내가 본 장면</span>한때 {won(peak)}까지 있었는데, 계속 하다 보니 0원이 됐어요. 출금하기를 눌렀지만 "출금 가능한 금액이 없습니다"만 떴어요.</p>
+        <p><span className="round-label is-truth">사실은</span>5판 뒤부터는 판돈을 키우게 하고 계속 지게 짜여 있었어요. "출금할 수 있다"는 알림을 봤을 때 멈췄어도, 출금하는 순간 사이트가 사라지게 되어 있었어요.</p>
+        <p className="muted small">숨은 수법 · {trickName('T9')}</p>
+      </div>
+    )
+  }
   if (!s.scamDone) return null
   return (
     <div className="card">
@@ -815,7 +908,47 @@ function RevealScreen({ s, update }) {
   )
 }
 
-function WrapScreen({ update, goHome }) {
+// 마무리: 학생 활동 결과(활동지). 화면에서 보고 인쇄할 수 있지만 어디에도 저장·전송하지 않는다.
+function ActivitySheet({ s }) {
+  const [pledge, setPledge] = useState('')
+  const status = trickStatus(s)
+  const spotted = (s.spotted ?? []).filter((id) => TRICKS.some((t) => t.id === id))
+  const hit = TRICKS.filter((t) => status[t.id].hit)
+  const peak = Math.max(START_MONEY, ...s.history.map((h) => h.money))
+  return (
+    <section className="sheet" aria-labelledby="sheet-title">
+      <div className="sheet-head">
+        <h3 id="sheet-title">나의 활동 결과</h3>
+        <p className="sheet-sub">몸소 깨닫는 불법도박의 실체 · 불법도박 예방교육</p>
+        <p className="sheet-name"><span>학년 · 반 · 번호</span><i aria-hidden="true" /></p>
+      </div>
+      <dl className="sheet-grid">
+        <div><dt>체험 전 생각</dt><dd>불법 도박으로 돈을 벌 수 있다 → <b>{s.before ?? '-'}</b></dd></div>
+        <div><dt>체험 후 생각</dt><dd>불법 도박으로 돈을 벌 수 있다 → <b>{s.after ?? '아직 답하지 않음'}</b></dd></div>
+        <div><dt>한 판 수</dt><dd>{s.history.length}판</dd></div>
+        <div><dt>가장 많았을 때</dt><dd>{won(peak)} ({rateOf(peak) >= 0 ? '+' : ''}{rateOf(peak).toFixed(0)}%)</dd></div>
+        <div><dt>실제로 받은 돈</dt><dd className="danger"><b>0원</b></dd></div>
+        <div><dt>당한 수법 / 찾아낸 수법</dt><dd>{hit.length}개 / {spotted.length}개</dd></div>
+      </dl>
+      <div className="sheet-block">
+        <p className="sheet-label">내가 찾아낸 수법</p>
+        {spotted.length > 0
+          ? <ul className="sheet-tags">{spotted.map((id) => <li key={id}>{TRICKS.find((t) => t.id === id).name}</li>)}</ul>
+          : <p className="muted">찾아낸 수법이 없어요. 정답 화면을 다시 살펴보세요.</p>}
+      </div>
+      <label className="sheet-block" htmlFor="pledge">
+        <span className="sheet-label">나의 다짐 한 줄</span>
+        <input id="pledge" className="sheet-input" type="text" maxLength={60} value={pledge} onChange={(e) => setPledge(e.target.value)} placeholder="예) 친구가 권해도 나는 하지 않는다." />
+        <span className="muted small">입력한 내용은 저장되거나 전송되지 않아요. 인쇄할 때만 활동지에 들어가요.</span>
+      </label>
+      <div className="row no-print">
+        <button type="button" className="btn btn-primary" onClick={() => window.print()}>활동 결과 인쇄하기</button>
+      </div>
+    </section>
+  )
+}
+
+function WrapScreen({ s, update, goHome }) {
   return (
     <section className="page" aria-labelledby="wrap-title">
       <header className="page-head">
@@ -835,8 +968,9 @@ function WrapScreen({ update, goHome }) {
           <li>출금하려는 순간 사이트가 사라졌을 때 어떤 기분이었나요? 현실이라면 그 돈은 누구 돈이었을까요?</li>
         </ol>
       </div>
+      <ActivitySheet s={s} />
       <Hotlines />
-      <div className="row">
+      <div className="row no-print">
         <button type="button" className="btn" onClick={() => update({ stage: 'reveal' })}>정답 다시 보기</button>
         <button type="button" className="btn btn-quiet" onClick={goHome}>처음 화면으로</button>
       </div>
@@ -845,7 +979,14 @@ function WrapScreen({ update, goHome }) {
 }
 
 export default function Experience({ goHelp, goHome }) {
-  const [s, setS] = useState(fresh)
+  const [s, setS] = useState(() => {
+    try { return { ...fresh(), ...JSON.parse(sessionStorage.getItem(SESSION_KEY) ?? 'null') } } catch { return fresh() }
+  })
+
+  // 새로고침해도 하던 단계·판·금액이 그대로 이어지도록 세션 저장소에 둔다 (탭을 닫으면 지워짐)
+  useEffect(() => {
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(s)) } catch { /* 무시 */ }
+  }, [s])
 
   // 예전 버전이 남긴 기록을 지운다. 이제는 아무것도 저장하지 않는다.
   useEffect(() => {
@@ -866,13 +1007,14 @@ export default function Experience({ goHelp, goHome }) {
 
   let body
   if (s.stage === 'scam') body = <ScamScreen s={s} update={update} goHome={goHome} />
+  else if (s.stage === 'broke') body = <BrokeScreen s={s} update={update} />
   else if (s.stage === 'quiz') body = <QuizScreen update={update} />
   else if (s.stage === 'reveal') body = <RevealScreen s={s} update={update} />
-  else if (s.stage === 'wrap') body = <WrapScreen update={update} goHome={goHome} />
+  else if (s.stage === 'wrap') body = <WrapScreen s={s} update={update} goHome={goHome} />
   else {
     body = (
       <div className="replica">
-        <ReplicaLabel goHome={goHome} />
+        <ReplicaLabel s={s} />
         {s.stage === 'signup' && <SignupScreen update={update} />}
         {s.stage === 'lobby' && <LobbyScreen s={s} update={update} />}
         {s.stage === 'game' && <GameScreen s={s} update={update} />}

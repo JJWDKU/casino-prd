@@ -230,13 +230,13 @@ export function DiceGame({ win, onStart, onDone, disabled }) {
 // 딸 듯 말 듯: 지는 판은 내 말이 내내 1등으로 달리다가 결승선 바로 앞에서 코 차이로 진다.
 
 const HORSES = [
-  { name: '번개돌이', silk: '#f2c230' },
-  { name: '천둥호', silk: '#e53935' },
-  { name: '은하수', silk: '#2f80ed' },
-  { name: '태풍', silk: '#43a047' },
-  { name: '흑진주', silk: '#2b2b2b' },
-  { name: '백설', silk: '#f5f5f5' },
-  { name: '불꽃', silk: '#fb8c00' },
+  { name: '번개돌이', silk: '#f2c230', coat: '#8a5426' },
+  { name: '천둥호', silk: '#e53935', coat: '#5b3415' },
+  { name: '은하수', silk: '#2f80ed', coat: '#a87443' },
+  { name: '태풍', silk: '#43a047', coat: '#3e2716' },
+  { name: '흑진주', silk: '#2b2b2b', coat: '#1e1410' },
+  { name: '백설', silk: '#f5f5f5', coat: '#d9cdb8' },
+  { name: '불꽃', silk: '#fb8c00', coat: '#7a3f18' },
 ]
 const RACE_MS = 8000
 const BET_DEADLINE = 15
@@ -279,7 +279,39 @@ function racePlan(me, win) {
 }
 const posAt = ([e, b], t, i) => Math.max(0, 100 * (e * t + b * Math.sin(Math.PI * t) + 0.008 * Math.sin(t * 17 + i * 1.3) * Math.sin(Math.PI * t)))
 
-function RaceBoard({ pos, pick, ranking, done }) {
+// 오른쪽을 보고 달리는 말 + 기수 (가운데가 0,0)
+// 다리 4개: 엉덩이(위쪽 끝)를 축으로 앞뒤로 흔들어 달리는 모습을 만든다.
+// 뒷다리 두 개, 앞다리 두 개가 서로 엇갈리게 움직인다 (갤럽).
+const LEGS = [
+  { d: 'M-7 1.5 L-8.5 8.5', cls: 'is-back-a' },
+  { d: 'M-4 2.5 L-3.5 8.8', cls: 'is-back-b' },
+  { d: 'M5 2.5 L4.5 8.8', cls: 'is-front-a' },
+  { d: 'M7.5 1.5 L9 8.4', cls: 'is-front-b' },
+]
+
+function HorseFigure({ coat, silk, no, running, speed = 1 }) {
+  const hoof = '#20140b'
+  return (
+    <g className={`g-horsefig ${running ? 'is-running' : ''}`} style={{ '--gait': `${0.42 / speed}s` }}>
+      <path className="g-tail" d="M-11 -2 Q-16 1 -14 7" fill="none" stroke={coat} strokeWidth="2.4" strokeLinecap="round" />
+      {LEGS.map((l) => <path key={l.cls} className={`g-leg ${l.cls}`} d={l.d} stroke={hoof} strokeWidth="1.9" strokeLinecap="round" />)}
+      <g className="g-horse-body">
+      <ellipse cx="-1" cy="0" rx="9.5" ry="4.6" fill={coat} stroke="#120a05" strokeWidth=".6" />
+      <path d="M5 -2.5 L9.5 -8.5 L13.5 -9.6 L16 -7.4 L15 -5.6 L11.5 -5.2 L9 0.5 Z" fill={coat} stroke="#120a05" strokeWidth=".6" />
+      <path d="M10.5 -8.6 L11 -11.4 L12.2 -9" fill={coat} stroke="#120a05" strokeWidth=".5" />
+      <path d="M6 -3 L9.6 -8.2" stroke="#120a05" strokeWidth="1.1" />
+      <rect x="-5.5" y="-3.6" width="7.5" height="6.4" rx="1" fill="#fff" stroke="#000" strokeWidth=".4" />
+      <text x="-1.75" y="1.9" className="g-horse-no">{no}</text>
+      <ellipse cx="0.5" cy="-7.4" rx="3.1" ry="3.4" fill={silk} stroke="#000" strokeWidth=".5" />
+      <path d="M2.6 -7 L6.4 -4.6" stroke={silk} strokeWidth="1.6" strokeLinecap="round" />
+      <circle cx="2.6" cy="-11.4" r="2.3" fill={silk} stroke="#000" strokeWidth=".5" />
+      <path d="M3.6 -12.4 L6 -11.6" stroke="#000" strokeWidth=".9" />
+      </g>
+    </g>
+  )
+}
+
+function RaceBoard({ pos, pick, ranking, done, running }) {
   const cells = Array.from({ length: CELLS }, (_, k) => k)
   return (
     <svg className="g-race" viewBox="0 0 360 244" role="img" aria-label="경마 트랙">
@@ -313,15 +345,22 @@ function RaceBoard({ pos, pick, ranking, done }) {
           <text x="14" y="0" className={`g-race-board-row ${pick === k ? 'is-mine' : ''}`}>{r + 1}위 {k + 1}번 {HORSES[k].name}</text>
         </g>
       ))}
-      {/* 말 말판 */}
+      {/* 말 피규어: 달리는 방향을 바라본다 */}
       {HORSES.map((h, i) => {
-        const [x, y] = trackPoint((Math.min(pos[i], 100) / 100) * LAP * 0.999, laneR(i))
+        const d = (Math.min(pos[i], 100) / 100) * LAP * 0.999
+        const r = laneR(i)
+        const [x, y] = trackPoint(d, r)
+        const [x2, y2] = trackPoint(d + 2, r)
+        // 기울이지 않고 똑바로 세운 채, 왼쪽으로 달릴 때만 좌우를 뒤집는다
+        const turn = x2 - x < -0.05 ? 'scale(-1 1)' : ''
+        void y2
         return (
           <g key={h.name} transform={`translate(${x} ${y})`} className={`g-piece ${pick === i ? 'is-mine' : ''}`}>
-            <ellipse cx="1.5" cy="4.5" rx="9" ry="3.6" className="g-piece-shadow" />
-            {pick === i && <circle r="11.5" className="g-piece-ring" />}
-            <circle r="9" fill={h.silk} stroke="#111" strokeWidth="1.2" />
-            <text y="3.4" className={`g-piece-no ${i === 4 ? 'is-light' : ''}`}>{i + 1}</text>
+            <ellipse cx="0" cy="5" rx="11" ry="3.2" className="g-piece-shadow" />
+            {pick === i && <ellipse cx="0" cy="4" rx="14" ry="6" className="g-piece-ring" />}
+            <g transform={`${turn} scale(.82)`}>
+              <HorseFigure coat={h.coat} silk={h.silk} no={i + 1} running={running && pos[i] < 100} speed={0.9 + (i % 3) * 0.08} />
+            </g>
           </g>
         )
       })}
@@ -383,7 +422,7 @@ export function HorseGame({ win, onStart, onDone, onTimeout, disabled }) {
         <span>제7경주 · 1바퀴 · 7마리</span>
         {pick === null ? <b className={left <= 5 ? 'is-hurry' : ''}>발매 마감 00:{String(left).padStart(2, '0')}</b> : <b>{order ? '경주 종료' : '경주 중'}</b>}
       </div>
-      <RaceBoard pos={pos} pick={pick} ranking={ranking} done={!!order} />
+      <RaceBoard pos={pos} pick={pick} ranking={ranking} done={!!order} running={pick !== null && !order} />
       <p className="g-call" aria-live="polite">{call}</p>
       {pick === null && (
         <div className="g-horse-picks">

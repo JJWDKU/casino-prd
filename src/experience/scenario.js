@@ -3,8 +3,8 @@
 
 export const START_MONEY = 100000
 export const MAX_ROUNDS = 5 // 5판을 해야 출금 버튼이 열린다
-export const LOW_BETS = [10000, 20000, 30000] // 1~5판
-export const HIGH_BETS = [50000, 100000, 200000] // 6판부터: 판돈을 키우게 한다
+export const LOW_BETS = [10000, 30000, 50000] // 1~5판
+export const HIGH_BETS = [100000, 200000, 300000] // 6판부터: 판돈을 키우게 한다
 export const PAYOUT = 2 // 이기면 건 돈의 2배를 준다
 export const INVITE_AFTER_ROUND = 3
 export const PROCESS_MS = 4000 // 출금이 정상으로 처리되는 것처럼 보이는 시간

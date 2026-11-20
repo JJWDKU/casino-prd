@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { QUESTIONS, OPTIONS, getLevel } from './questions.js'
 import Experience, { Hotlines } from './experience/Experience.jsx'
 import HomeScreen from './HomeScreen.jsx'
@@ -134,12 +134,41 @@ function SubBand({ tab, go }) {
   )
 }
 
+// 새로고침해도 보던 화면이 그대로 나오도록 세션 저장소에 둔다.
+// 세션 저장소는 탭(브라우저)을 닫으면 지워지므로, 공용 기기에서 다음 학생에게 남지 않는다.
+const readSession = (key, fallback) => {
+  try { return JSON.parse(sessionStorage.getItem(key)) ?? fallback } catch { return fallback }
+}
+const writeSession = (key, value) => {
+  try { sessionStorage.setItem(key, JSON.stringify(value)) } catch { /* 저장이 안 돼도 계속한다 */ }
+}
+
 export default function App() {
-  const [tab, setTab] = useState('home')
+  const [tab, setTabRaw] = useState(() => readSession('silche.tab', 'home'))
+  // 소개를 끝까지 읽어야 체험을 시작할 수 있다
+  const [introRead, setIntroRead] = useState(() => readSession('silche.introRead', false))
+  // 소개를 다 읽기 전에 메뉴의 "체험하기"를 누르면, 맨 아래 체험하기 버튼까지 내려 준다 (누를 때마다 숫자를 올려 다시 내려가게)
+  const [gate, setGate] = useState(0)
+  const first = useRef(true)
+
+  useEffect(() => { writeSession('silche.tab', tab) }, [tab])
+  useEffect(() => { writeSession('silche.introRead', introRead) }, [introRead])
 
   useEffect(() => {
+    // 새로고침 직후에는 브라우저가 기억한 스크롤 위치를 쓰고, 화면을 바꿀 때만 맨 위로
+    if (first.current) { first.current = false; return }
     window.scrollTo(0, 0)
   }, [tab])
+
+  const setTab = (next) => {
+    if (next === 'exp' && !introRead) {
+      setGate((n) => n + 1)
+      setTabRaw('home')
+      return
+    }
+    setGate(0)
+    setTabRaw(next)
+  }
 
   return (
     <div className="app">
@@ -176,7 +205,8 @@ export default function App() {
       </header>
 
       <main id="main" tabIndex={-1}>
-        {tab === 'home' && <HomeScreen go={setTab} />}
+        <h1 className="sr-only">몸소 깨닫는 불법도박의 실체 · {tab === 'home' ? '프로그램 소개' : labelOf(tab)}</h1>
+        {tab === 'home' && <HomeScreen go={setTab} introRead={introRead} onRead={() => setIntroRead(true)} gate={gate} />}
         {tab !== 'home' && (
           <>
             <SubBand tab={tab} go={setTab} />
@@ -190,13 +220,25 @@ export default function App() {
       </main>
 
       <footer className="foot">
-        <div className="wrap foot-in">
-          <p className="foot-name">몸소 깨닫는 불법도박의 실체 · 중·고등학생 불법도박 예방교육 프로그램</p>
-          <p>모든 체험은 가상 머니로만 진행되며, 실제 돈·계좌·개인정보를 받지 않습니다. 체험 기록은 저장하지 않아 새로고침하면 처음부터 시작합니다.</p>
-          <p className="foot-tel">
-            <a href="tel:1336">도박문제 헬프라인 1336 (24시간·무료)</a>
-            <a href="tel:1388">청소년 상담 1388 (24시간)</a>
-          </p>
+        <div className="wrap">
+          <div className="foot-cols">
+            <div>
+              <p className="foot-name">몸소 깨닫는 불법도박의 실체</p>
+              <p>중·고등학생 불법도박 예방교육 프로그램 (체험형 시뮬레이션)</p>
+            </div>
+            <div>
+              <p className="foot-head">운영 원칙</p>
+              <p>가상 머니만 사용 · 개인정보 수집 없음 · 기록 저장 없음 · 실제 사이트·배당 정보 없음</p>
+            </div>
+            <div>
+              <p className="foot-head">상담 연계</p>
+              <p className="foot-tel">
+                <a href="tel:1336">도박문제 헬프라인 1336 (24시간·무료)</a>
+                <a href="tel:1388">청소년 상담 1388 (24시간)</a>
+              </p>
+            </div>
+          </div>
+          <p className="foot-note">이 프로그램의 모든 화면은 교육용으로 만든 재현 화면이며, 실제 사이트·업체와 관계가 없습니다.</p>
         </div>
       </footer>
     </div>
