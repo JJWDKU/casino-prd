@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>불법도박 예방교육 포스터 (A2)</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@500;700;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" />
+<style>
+  @page { size: 420mm 594mm; margin: 0; }
+  :root {
+    --ink: #141414; --muted: #4a5068; --line: #d3dde6;
+    --accent: #0f5257; --accent-soft: #dcebec; --band: #c3d7e5; --band-soft: #e7f0f6;
+    --danger: #b8392e; --mark: #fbe38b; --dark: #1e1f20;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 420mm; height: 594mm; background: #fff; color: var(--ink);
+    font-family: 'Hanken Grotesk', 'Noto Sans KR', sans-serif; word-break: keep-all; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .poster { width: 420mm; height: 594mm; display: grid; grid-template-rows: auto auto auto auto 1fr auto; overflow: hidden; }
+  .pad { padding-left: 26mm; padding-right: 26mm; }
+
+  /* 1. 머리 */
+  .head { background: var(--accent); color: #fff; padding-top: 14mm; padding-bottom: 11mm; }
+  .eyebrow { display: flex; justify-content: space-between; align-items: center; font-size: 8.5mm; font-weight: 700; letter-spacing: .02em; }
+  .eyebrow .tag { border: .6mm solid rgba(255,255,255,.7); border-radius: 30mm; padding: 2mm 6mm; font-size: 6.5mm; }
+  h1 { margin-top: 8mm; font-size: 22mm; line-height: 1.12; font-weight: 900; letter-spacing: -.03em; }
+  h1 em { font-style: normal; color: var(--mark); }
+  .lead { margin-top: 7mm; font-size: 8mm; line-height: 1.5; font-weight: 500; color: #e6f1f1; max-width: 330mm; }
+
+  /* 2. 그래프 */
+  .story { background: var(--band-soft); padding-top: 10mm; padding-bottom: 6mm; }
+  .story-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 10mm; }
+  h2 { font-size: 11mm; font-weight: 900; letter-spacing: -.02em; line-height: 1.2; }
+  h2 small { display: block; font-size: 7mm; font-weight: 700; color: var(--accent); letter-spacing: .02em; margin-bottom: 3mm; }
+  .result { text-align: right; }
+  .result span { display: block; font-size: 7mm; font-weight: 700; color: var(--muted); }
+  .result b { font-family: 'Hanken Grotesk', 'Noto Sans KR', sans-serif; font-size: 22mm; font-weight: 800; color: var(--danger); line-height: 1; }
+  .chart { margin-top: 2mm; width: 100%; height: auto; display: block; }
+
+  /* 3. 수법 */
+  .tricks { padding-top: 9mm; }
+  .trick-grid { margin-top: 5mm; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; }
+  .trick { border: .5mm solid var(--line); border-radius: 4mm; padding: 5mm; display: grid; grid-template-columns: 10mm 1fr; column-gap: 3.5mm; align-items: start; }
+  .trick .no { width: 10mm; height: 10mm; border-radius: 50%; background: var(--accent); color: #fff; display: grid; place-items: center; font-size: 5.6mm; font-weight: 800; font-family: 'Hanken Grotesk', sans-serif; }
+  .trick b { display: block; font-size: 6.6mm; font-weight: 900; line-height: 1.3; }
+  .trick p { margin-top: 1.5mm; font-size: 5.4mm; line-height: 1.5; color: var(--muted); }
+  .trick.key { background: var(--accent-soft); border-color: var(--accent); }
+
+  /* 4. 수업 흐름 */
+  .flow { padding-top: 9mm; }
+  .steps { margin-top: 5mm; display: grid; grid-template-columns: repeat(4, 1fr); gap: 5mm; counter-reset: s; }
+  .step { background: var(--band-soft); border-radius: 4mm; padding: 5mm 5.5mm; display: grid; grid-template-columns: auto 1fr auto; column-gap: 3mm; align-items: center; align-content: start; }
+  .step .n { font-family: 'Hanken Grotesk', sans-serif; font-weight: 800; font-size: 8mm; color: var(--accent); line-height: 1; }
+  .step b { display: block; font-size: 7mm; font-weight: 900; }
+  .step .t { display: inline-block; font-size: 5.6mm; font-weight: 700; color: var(--accent); background: #fff; border-radius: 10mm; padding: .8mm 3.5mm; }
+  .step p { grid-column: 1 / -1; margin-top: 2.5mm; font-size: 5.5mm; line-height: 1.5; color: var(--muted); }
+  .games { margin-top: 4.5mm; font-size: 6.4mm; color: var(--muted); }
+  .games b { color: var(--ink); }
+
+  /* 5. 상담 */
+  .calls { background: var(--dark); color: #fff; padding-top: 10mm; padding-bottom: 10mm; display: grid; grid-template-columns: 1.15fr 1fr 1fr; gap: 10mm; align-items: center; align-self: end; }
+  .calls h2 { color: #fff; font-size: 12mm; }
+  .calls h2 small { color: var(--mark); }
+  .call { border-left: 1mm solid var(--mark); padding-left: 7mm; }
+  .call span { display: block; font-size: 7mm; font-weight: 700; }
+  .call b { display: block; font-family: 'Hanken Grotesk', sans-serif; font-size: 26mm; font-weight: 800; line-height: 1; margin-top: 2mm; letter-spacing: -.01em; }
+  .call small { display: block; margin-top: 2mm; font-size: 5.6mm; color: #c3ccd3; }
+
+  .foot { padding-top: 6mm; padding-bottom: 6mm; display: flex; justify-content: space-between; font-size: 5.4mm; color: var(--muted); }
+  .foot b { color: var(--ink); }
+</style>
+</head>
+<body>
+<div class="poster">
+
+  <header class="head pad">
+    <div class="eyebrow">
+      <span>몸소 깨닫는 불법도박의 실체 · 중·고등학생 예방교육</span>
+      <span class="tag">체험용 · 실제 돈 아님</span>
+    </div>
+    <h1>불법 도박은 처음부터<br><em>이길 수 없게</em> 짜여 있습니다</h1>
+    <p class="lead">가상 머니 100,000원으로 불법 도박 사이트를 직접 겪어 보고,<br>딴 돈을 왜 받을 수 없는지 스스로 찾아내는 체험형 수업입니다.</p>
+  </header>
+
+  <section class="story pad">
+    <div class="story-top">
+      <h2><small>체험하면 이렇게 돼요</small>돈이 불어나는 것 같다가,<br>출금하면 사이트가 사라져요</h2>
+      <div class="result"><span>내가 실제로 받은 돈</span><b>0원</b></div>
+    </div>
+    <!-- 체험 흐름 예시 그래프: 1~5판 보유 금액, 출금 후 받은 돈 -->
+    <svg class="chart" viewBox="0 16 1040 244" aria-hidden="true" font-family="Hanken Grotesk, Noto Sans KR, sans-serif">
+      <g stroke="#d3dde6" stroke-width="1.5">
+        <line x1="70" y1="30" x2="1030" y2="30" /><line x1="70" y1="90" x2="1030" y2="90" />
+        <line x1="70" y1="150" x2="1030" y2="150" /><line x1="70" y1="210" x2="1030" y2="210" />
+      </g>
+      <g fill="#4a5068" font-size="16" font-weight="700" text-anchor="end">
+        <text x="58" y="36">30만</text><text x="58" y="96">20만</text><text x="58" y="156">10만</text><text x="58" y="216">0원</text>
+      </g>
+      <!-- 시작~5판 보유 금액(예시): 100k,130k,180k,230k,180k,230k / 출금 뒤 받은 돈 0원 -->
+      <polyline points="90,150 220,132 350,102 480,72 610,102 740,72" fill="none" stroke="#0f5257" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" />
+      <path d="M740,72 L900,210" fill="none" stroke="#b8392e" stroke-width="6" stroke-dasharray="13 11" stroke-linecap="round" />
+      <g fill="#0f5257"><circle cx="90" cy="150" r="9" /><circle cx="220" cy="132" r="9" /><circle cx="350" cy="102" r="9" /><circle cx="480" cy="72" r="9" /><circle cx="740" cy="72" r="9" /></g>
+      <circle cx="610" cy="102" r="9" fill="#fff" stroke="#0f5257" stroke-width="5" />
+      <circle cx="900" cy="210" r="13" fill="#b8392e" />
+      <g font-size="18" font-weight="800" fill="#141414" text-anchor="middle">
+        <text x="90" y="130">100,000원</text>
+        <text x="480" y="52">230,000원</text>
+        <text x="610" y="134" fill="#4a5068" font-weight="700">아깝게 짐</text>
+        <text x="740" y="52">출금하기</text>
+        <text x="922" y="190" fill="#b8392e" text-anchor="start">사이트 사라짐</text>
+      </g>
+      <g font-size="17" font-weight="700" fill="#4a5068" text-anchor="middle">
+        <text x="90" y="252">시작</text><text x="220" y="252">1판</text><text x="350" y="252">2판</text>
+        <text x="480" y="252">3판</text><text x="610" y="252">4판</text><text x="740" y="252">5판</text>
+        <text x="900" y="252" fill="#b8392e">출금 뒤</text>
+      </g>
+    </svg>
+  </section>
+
+  <section class="tricks pad">
+    <h2><small>체험 속에 숨어 있는 수법</small>이기고 지는 건 운이 아니라, 사이트가 정해요</h2>
+    <div class="trick-grid">
+      <div class="trick"><span class="no">1</span><div><b>처음엔 이기게 해 줘요</b><p>몇 판을 따게 해서 "나는 된다"고 믿게 만들어요.</p></div></div>
+      <div class="trick"><span class="no">2</span><div><b>아깝게 진 것처럼 보여요</b><p>"한 끗 차이!"는 연출이에요. 다음 판을 하게 만들어요.</p></div></div>
+      <div class="trick"><span class="no">3</span><div><b>출금에 조건을 걸어요</b><p>"5판 이상 해야 출금" 같은 조건으로 계속 하게 만들어요.</p></div></div>
+      <div class="trick"><span class="no">4</span><div><b>시간에 쫓기게 해요</b><p>"마감 15초 전" 타이머로 생각할 시간을 빼앗아요.</p></div></div>
+      <div class="trick"><span class="no">5</span><div><b>판돈을 키우게 해요</b><p>"크게 걸면 크게 딴다"며 부추긴 뒤 계속 지게 해요.</p></div></div>
+      <div class="trick"><span class="no">6</span><div><b>계좌·신분증을 달라고 해요</b><p>넘긴 정보는 다른 범죄에 쓰일 수 있어요. 절대 넘기지 마세요.</p></div></div>
+      <div class="trick"><span class="no">7</span><div><b>친구를 데려오면 보상해요</b><p>나도 모르게 친구를 끌어들인 사람이 돼요.</p></div></div>
+      <div class="trick key"><span class="no">8</span><div><b>출금하면 닫고 도망가요</b><p>"인터넷 오류"로 시간을 끌다 사라져요. 불법이라 돌려받기 어려워요.</p></div></div>
+    </div>
+  </section>
+
+  <section class="flow pad">
+    <h2><small>한 차시 45분 · 1인 1기기 · 설치·로그인 없음</small>이렇게 배워요</h2>
+    <div class="steps">
+      <div class="step"><span class="n">01</span><b>체험</b><span class="t">10분</span><p>가상 머니로 사이트를 직접 겪어 봐요.</p></div>
+      <div class="step"><span class="n">02</span><b>수법 찾기</b><span class="t">5분</span><p>수상했던 장면을 직접 골라요.</p></div>
+      <div class="step"><span class="n">03</span><b>정답 공개</b><span class="t">10분</span><p>판마다 숨은 수법을 확인해요.</p></div>
+      <div class="step"><span class="n">04</span><b>마무리</b><span class="t">15분</span><p>거절하는 말을 연습하고 정리해요.</p></div>
+    </div>
+    <p class="games">체험 게임 4가지 — <b>룰렛 · 주사위 홀짝 · 경마 · 슬롯머신</b> &nbsp;|&nbsp; 실제 돈·개인정보는 쓰지 않아요. 점수·순위·보상도 없어요.</p>
+  </section>
+
+  <section class="calls pad">
+    <h2><small>혼자 고민하지 마세요</small>도움이 필요하면<br>지금 전화하세요</h2>
+    <div class="call"><span>도박문제 헬프라인</span><b>1336</b><small>24시간 · 무료 · 익명 상담</small></div>
+    <div class="call"><span>청소년 상담</span><b>1388</b><small>24시간 · 전화·문자·채팅</small></div>
+  </section>
+
+  <footer class="foot pad">
+    <span><b>불법 사이트에서 딴 돈은 내 돈이 아니에요.</b> 권유를 받으면 거절하고, 어른에게 알려 주세요.</span>
+    <span>체험 속 금액은 모두 가상 머니입니다.</span>
+  </footer>
+</div>
+</body>
+</html>
